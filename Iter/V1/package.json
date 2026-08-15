@@ -1,0 +1,29 @@
+{
+  "name": "pharmacy-pos-system",
+  "version": "1.0.0",
+  "description": "Offline Pharmacy Point-of-Sale and Admin Management System",
+  "main": "src/server/server.js",
+  "scripts": {
+    "start": "node src/server/server.js",
+    "seed": "node src/server/database/seed.js",
+    "test": "node test.js"
+  },
+  "keywords": [
+    "pos",
+    "pharmacy",
+    "fefo",
+    "inventory",
+    "sqlite",
+    "escpos"
+  ],
+  "author": "Pharmacy POS Team",
+  "license": "MIT",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "html2canvas": "^1.4.1",
+    "jspdf": "^4.2.1",
+    "multer": "^1.4.5-lts.1",
+    "sqlite3": "^5.1.7"
+  }
+}

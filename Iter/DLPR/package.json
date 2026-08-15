@@ -1,0 +1,51 @@
+{
+  "name": "pharmacy-pos-system",
+  "version": "1.0.0",
+  "description": "Offline Pharmacy Point-of-Sale and Admin Management System",
+  "main": "src/server/server.js",
+  "scripts": {
+    "start": "node --experimental-sqlite src/server/server.js",
+    "launch": "node --experimental-sqlite launcher.js",
+    "seed": "node --experimental-sqlite src/server/database/seed.js",
+    "migrate": "node --experimental-sqlite migrate.js",
+    "test": "node --experimental-sqlite test.js",
+    "build": "node build.js"
+  },
+  "keywords": [
+    "pos",
+    "pharmacy",
+    "fefo",
+    "inventory",
+    "sqlite",
+    "escpos"
+  ],
+  "author": "Pharmacy POS Team",
+  "license": "MIT",
+  "pkg": {
+    "scripts": [
+      "src/server/**/*.js"
+    ],
+    "assets": [
+      "src/server/database/schema.sql",
+      "src/public/**/*",
+      "node_modules/multer/**/*"
+    ],
+    "targets": [
+      "node22-win-x64"
+    ],
+    "outputPath": "dist",
+    "nodeOptions": [
+      "--experimental-sqlite"
+    ]
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "html2canvas": "^1.4.1",
+    "jspdf": "^4.2.1",
+    "multer": "^1.4.5-lts.1"
+  },
+  "devDependencies": {
+    "@yao-pkg/pkg": "^6.22.0"
+  }
+}

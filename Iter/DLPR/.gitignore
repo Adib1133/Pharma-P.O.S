@@ -1,0 +1,28 @@
+# Dependencies
+node_modules/
+
+# SQLite database files (runtime data — not source code)
+*.db
+*.db-shm
+*.db-wal
+
+# Auto-generated backups
+backups/
+
+# Temporary upload staging folder
+uploads/
+
+# Production build output
+dist/
+
+# OS / editor clutter
+.DS_Store
+Thumbs.db
+desktop.ini
+*.lnk
+.vscode/
+.idea/
+
+# Logs
+*.log
+npm-debug.log*

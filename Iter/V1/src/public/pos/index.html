@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pharmacy POS - Cashier Terminal</title>
+  <link rel="stylesheet" href="pos.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Shared Receipt Engine & PDF Libraries -->
+  <script src="../shared/jspdf.umd.min.js"></script>
+  <script src="../shared/html2canvas.min.js"></script>
+  <script src="../shared/receipt-engine.js"></script>
+</head>
+<body>
+  <div id="pos-app" class="pos-container">
+    <!-- Header Bar -->
+    <header class="pos-header">
+      <div class="header-left">
+        <div class="store-badge">
+          <span class="store-icon">💊</span>
+          <div class="store-info">
+            <h1 id="hdr-store-name">CureAll Pharmacy</h1>
+            <span class="store-tag">Offline POS Terminal</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="header-center">
+        <div class="barcode-status" id="barcode-status-indicator">
+          <span class="status-dot"></span>
+          <span class="status-text">Barcode Scanner Ready</span>
+        </div>
+      </div>
+
+      <div class="header-right">
+        <button class="btn-hdr btn-held" id="btn-held-sales">
+          <span>📋 Held Sales</span>
+          <span class="badge" id="held-count-badge">0</span>
+        </button>
+        <button class="btn-hdr btn-register" id="btn-register-mgr">
+          <span id="reg-status-icon">🟢</span>
+          <span id="reg-status-text">Register Open</span>
+        </button>
+        <div class="cashier-pill">
+          <span class="avatar">👤</span>
+          <span id="active-cashier-name">Cashier</span>
+          <button class="btn-lock" id="btn-lock-pos" title="Lock Terminal">🔒</button>
+        </div>
+        <a href="/admin" class="btn-hdr btn-admin" target="_blank">⚙️ Admin Website</a>
+      </div>
+    </header>
+
+    <!-- Main 3-Column Touch Layout -->
+    <main class="pos-main">
+      <!-- Left Column: Search, Categories, Touch Numpad -->
+      <section class="panel-left">
+        <div class="search-box-container">
+          <div class="search-input-wrapper">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="pos-search-input" placeholder="Scan Barcode or Search Brand, Generic, SKU..." autocomplete="off" autofocus>
+            <button class="btn-clear" id="btn-clear-search">×</button>
+          </div>
+          <div class="search-results-dropdown" id="search-dropdown"></div>
+        </div>
+
+        <div class="category-section">
+          <div class="section-title">Categories</div>
+          <div class="category-grid" id="category-grid">
+            <button class="cat-chip active" data-cat-id="all">All Items</button>
+          </div>
+        </div>
+
+        <div class="quick-items-section">
+          <div class="section-title">Quick Touch Selection</div>
+          <div class="quick-items-grid" id="quick-items-grid"></div>
+        </div>
+      </section>
+
+      <!-- Center Column: Cart & Items -->
+      <section class="panel-center">
+        <div class="cart-header">
+          <div class="cart-title">
+            <span>🛒 Current Order Cart</span>
+            <span class="cart-count-badge" id="cart-item-count">0 items</span>
+          </div>
+          <button class="btn-clear-cart" id="btn-clear-cart">Clear Cart</button>
+        </div>
+
+        <div class="cart-items-wrapper">
+          <table class="cart-table">
+            <thead>
+              <tr>
+                <th style="width: 35%;">Item Description</th>
+                <th style="width: 22%;">Batch & Expiry</th>
+                <th style="width: 18%;">Qty</th>
+                <th style="width: 15%;">Price</th>
+                <th style="width: 10%;">Action</th>
+              </tr>
+            </thead>
+            <tbody id="cart-table-body">
+              <tr class="empty-cart-row">
+                <td colspan="5">
+                  <div class="empty-cart-state">
+                    <span class="empty-icon">💊</span>
+                    <p>Cart is currently empty</p>
+                    <small>Scan a barcode or use medicine search on the left to add items.</small>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Right Column: Customer Link, Payment & Totals -->
+      <section class="panel-right">
+        <div class="customer-box">
+          <label for="cust-select">Linked Customer:</label>
+          <div class="cust-select-group">
+            <select id="cust-select" class="pos-select">
+              <option value="1">Walk-in Customer (Default)</option>
+            </select>
+            <button class="btn-add-cust" id="btn-quick-cust" title="Add Customer">+</button>
+          </div>
+          <div id="cust-loyalty-info" class="loyalty-info" style="display: none;">
+            <span>⭐ Loyalty Points: <strong id="cust-points-val">0</strong></span>
+          </div>
+        </div>
+
+        <div class="bill-summary-card">
+          <div class="summary-line">
+            <span>Subtotal:</span>
+            <span id="sum-subtotal">৳0.00</span>
+          </div>
+          <div class="summary-line">
+            <span>VAT Tax (Included):</span>
+            <span id="sum-tax">৳0.00</span>
+          </div>
+          <div class="summary-line discount-line">
+            <span>Order Discount:</span>
+            <div class="discount-input-wrapper">
+              <span class="currency-prefix">৳</span>
+              <input type="number" id="input-discount" value="0.00" min="0" step="0.5" class="discount-input">
+            </div>
+          </div>
+          <div class="summary-line grand-total-line">
+            <span>GRAND TOTAL</span>
+            <span id="sum-grand-total">৳0.00</span>
+          </div>
+        </div>
+
+        <div class="payment-method-section">
+          <div class="section-title">Select Payment Method</div>
+          <div class="payment-tabs">
+            <button class="pay-tab active" data-mode="cash">💵 Cash</button>
+            <button class="pay-tab" data-mode="card">💳 Card</button>
+            <button class="pay-tab" data-mode="wallet">📱 bKash / Nagad</button>
+          </div>
+
+          <div class="pay-pane active" id="pane-cash">
+            <div class="cash-calc-box">
+              <div class="field-group">
+                <label>Amount Tendered (BDT):</label>
+                <div class="tendered-input-wrapper">
+                  <span class="currency-prefix">৳</span>
+                  <input type="number" id="input-cash-given" value="" placeholder="0.00" min="0" step="1" class="tendered-input">
+                </div>
+              </div>
+              <div class="quick-cash-buttons">
+                <button class="btn-qcash" data-val="exact">Exact</button>
+                <button class="btn-qcash" data-val="100">৳100</button>
+                <button class="btn-qcash" data-val="200">৳200</button>
+                <button class="btn-qcash" data-val="500">৳500</button>
+                <button class="btn-qcash" data-val="1000">৳1000</button>
+              </div>
+              <div class="change-due-box" id="change-due-box">
+                <span>CHANGE DUE:</span>
+                <strong id="val-change-due">৳0.00</strong>
+              </div>
+            </div>
+          </div>
+
+          <div class="pay-pane" id="pane-card" style="display: none;">
+            <div class="card-ref-box">
+              <label>Card Approval / Ref Code:</label>
+              <input type="text" id="input-card-ref" placeholder="e.g. TXN-998811" class="pos-input">
+            </div>
+          </div>
+
+          <div class="pay-pane" id="pane-wallet" style="display: none;">
+            <div class="wallet-ref-box">
+              <label>bKash / Nagad TrxID Reference:</label>
+              <input type="text" id="input-wallet-ref" placeholder="e.g. 9B87A11X" class="pos-input">
+            </div>
+          </div>
+        </div>
+
+        <div class="pos-action-buttons">
+          <button class="btn-action btn-hold" id="btn-hold-cart">⏸️ Hold Sale</button>
+          <button class="btn-action btn-pay" id="btn-complete-pay">
+            <span>PAY & PRINT</span>
+            <span class="sub-text" id="btn-pay-amount">৳0.00</span>
+          </button>
+        </div>
+      </section>
+    </main>
+
+    <!-- Bottom Status Bar -->
+    <footer class="pos-footer">
+      <div class="footer-item">
+        <span class="f-label">Terminal Status:</span>
+        <span class="f-val online-val">Active (127.0.0.1)</span>
+      </div>
+      <div class="footer-item">
+        <span class="f-label">Active Register Session:</span>
+        <span id="footer-reg-info" class="f-val">Session #1</span>
+      </div>
+      <div class="footer-item clock-item">
+        <span id="clock-display">00:00:00 AM</span>
+      </div>
+    </footer>
+
+    <!-- MODAL: PIN Login (Supports On-Screen & Physical Keyboard Input) -->
+    <div class="modal-overlay" id="modal-pin-login" style="display: flex;">
+      <div class="modal-card pin-modal-card">
+        <div class="modal-header">
+          <h2>🔒 Cashier Authentication</h2>
+        </div>
+        <div class="modal-body">
+          <p>Please enter your Cashier PIN (Type on keyboard or click numpad):</p>
+          <div class="pin-display-box" id="pin-display">••••</div>
+          <div class="pin-numpad">
+            <button class="btn-pin" data-num="1">1</button>
+            <button class="btn-pin" data-num="2">2</button>
+            <button class="btn-pin" data-num="3">3</button>
+            <button class="btn-pin" data-num="4">4</button>
+            <button class="btn-pin" data-num="5">5</button>
+            <button class="btn-pin" data-num="6">6</button>
+            <button class="btn-pin" data-num="7">7</button>
+            <button class="btn-pin" data-num="8">8</button>
+            <button class="btn-pin" data-num="9">9</button>
+            <button class="btn-pin btn-pin-clear" data-num="C">C</button>
+            <button class="btn-pin" data-num="0">0</button>
+            <button class="btn-pin btn-pin-enter" id="btn-pin-submit">➔</button>
+          </div>
+          <div class="pin-error-msg" id="pin-error-msg"></div>
+          <div class="pin-demo-hint">
+            <small>Default Cashier PIN: <strong>5678</strong> | Admin PIN: <strong>1234</strong></small>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL: Manual Batch Selector -->
+    <div class="modal-overlay" id="modal-batch-selector" style="display: none;">
+      <div class="modal-card batch-modal-card">
+        <div class="modal-header">
+          <h3 id="batch-modal-med-title">Select Batch for Medicine</h3>
+          <button class="btn-close-modal" id="btn-close-batch-modal">×</button>
+        </div>
+        <div class="modal-body">
+          <p class="batch-fefo-notice">⚡ <strong>FEFO Warning:</strong> Batches are pre-sorted by earliest expiry date. Selecting an older batch requires manual verification.</p>
+          <div class="batch-list" id="batch-modal-list"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL: Held Sales Recall -->
+    <div class="modal-overlay" id="modal-held-sales" style="display: none;">
+      <div class="modal-card">
+        <div class="modal-header">
+          <h3>📋 Held Sales List</h3>
+          <button class="btn-close-modal" id="btn-close-held-modal">×</button>
+        </div>
+        <div class="modal-body">
+          <div id="held-sales-list-container"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL: Cash Register Open/Close Manager -->
+    <div class="modal-overlay" id="modal-register-mgr" style="display: none;">
+      <div class="modal-card">
+        <div class="modal-header">
+          <h3 id="reg-modal-title">Daily Cash Register Management</h3>
+          <button class="btn-close-modal" id="btn-close-reg-modal">×</button>
+        </div>
+        <div class="modal-body" id="reg-modal-body"></div>
+      </div>
+    </div>
+
+    <!-- MODAL: Quick Add Customer -->
+    <div class="modal-overlay" id="modal-quick-cust" style="display: none;">
+      <div class="modal-card">
+        <div class="modal-header">
+          <h3>👤 Add New Customer</h3>
+          <button class="btn-close-modal" id="btn-close-cust-modal">×</button>
+        </div>
+        <div class="modal-body">
+          <form id="form-quick-cust">
+            <div class="form-group">
+              <label>Full Name *</label>
+              <input type="text" id="cust-new-name" required class="pos-input">
+            </div>
+            <div class="form-group">
+              <label>Phone Number *</label>
+              <input type="tel" id="cust-new-phone" required class="pos-input">
+            </div>
+            <div class="form-group">
+              <label>Address</label>
+              <input type="text" id="cust-new-address" class="pos-input">
+            </div>
+            <div class="form-actions">
+              <button type="submit" class="btn-action btn-pay">Save Customer</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL: Receipt Preview & Print/PDF -->
+    <div class="modal-overlay" id="modal-receipt-preview" style="display: none;">
+      <div class="modal-card receipt-modal-card">
+        <div class="modal-header">
+          <h3>🧾 Thermal Receipt & PDF</h3>
+          <button class="btn-close-modal" id="btn-close-receipt-modal">×</button>
+        </div>
+        <div class="modal-body">
+          <div class="receipt-actions-bar">
+            <button class="btn-print-action" id="btn-do-print">🖨️ Print Thermal Receipt</button>
+            <button class="btn-print-action btn-pdf" id="btn-download-pdf">📥 Download PDF Receipt</button>
+            <button class="btn-print-action btn-escpos" id="btn-download-escpos">💾 ESC/POS Bin</button>
+            <button class="btn-print-action btn-new-sale" id="btn-start-new-sale">✨ New Sale</button>
+          </div>
+          <div class="receipt-paper-wrapper">
+            <div id="receipt-paper-content"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="pos.js"></script>
+</body>
+</html>

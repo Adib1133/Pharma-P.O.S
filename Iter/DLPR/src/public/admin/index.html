@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pharmacy Management System - Admin Dashboard</title>
+  <link rel="stylesheet" href="admin.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Shared Receipt Engine & PDF Libraries -->
+  <script src="../shared/jspdf.umd.min.js"></script>
+  <script src="../shared/html2canvas.min.js"></script>
+  <script src="../shared/receipt-engine.js"></script>
+</head>
+<body>
+  <div class="admin-app">
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <span class="brand-icon">💊</span>
+        <div class="brand-text">
+          <h2 id="adm-hdr-store">CureAll Admin</h2>
+          <span>Pharmacy Management</span>
+        </div>
+      </div>
+
+      <nav class="nav-menu">
+        <button class="nav-item active" data-tab="dashboard">
+          <span class="nav-icon">📊</span>
+          <span>Dashboard</span>
+        </button>
+        <button class="nav-item" data-tab="medicines">
+          <span class="nav-icon">💊</span>
+          <span>Medicine Master</span>
+        </button>
+        <button class="nav-item" data-tab="stock">
+          <span class="nav-icon">📦</span>
+          <span>Batch Stock & FEFO</span>
+        </button>
+        <button class="nav-item" data-tab="sales">
+          <span class="nav-icon">🧾</span>
+          <span>Sales & Receipts</span>
+        </button>
+        <button class="nav-item" data-tab="reports">
+          <span class="nav-icon">📈</span>
+          <span>Reports & Analytics</span>
+        </button>
+        <button class="nav-item" data-tab="customers">
+          <span class="nav-icon">👤</span>
+          <span>Customers & Loyalty</span>
+        </button>
+        <button class="nav-item" data-tab="suppliers">
+          <span class="nav-icon">🚚</span>
+          <span>Suppliers</span>
+        </button>
+        <button class="nav-item" data-tab="users">
+          <span class="nav-icon">🔑</span>
+          <span>User Management</span>
+        </button>
+        <button class="nav-item" data-tab="settings">
+          <span class="nav-icon">⚙️</span>
+          <span>Store & Receipt Setup</span>
+        </button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <a href="/pos" class="btn-pos-link" target="_blank">💻 Launch POS Screen</a>
+      </div>
+    </aside>
+
+    <!-- Main Workspace -->
+    <main class="main-content">
+      <!-- Top Header -->
+      <header class="content-header">
+        <h1 id="page-title">Dashboard Overview</h1>
+        <div class="header-actions">
+          <span class="system-status">100% Offline | DB: WAL Mode</span>
+          <button class="btn-primary" id="btn-global-refresh">🔄 Refresh Data</button>
+        </div>
+      </header>
+
+      <!-- TAB 1: Dashboard -->
+      <div class="tab-pane active" id="pane-dashboard">
+        <div class="kpi-grid">
+          <div class="kpi-card">
+            <div class="kpi-icon">💰</div>
+            <div class="kpi-data">
+              <span class="kpi-label">Today's Sales</span>
+              <h3 id="kpi-today-rev">৳0.00</h3>
+              <small id="kpi-today-count">0 transactions</small>
+            </div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-icon">📈</div>
+            <div class="kpi-data">
+              <span class="kpi-label">Monthly Gross Revenue</span>
+              <h3 id="kpi-month-rev">৳0.00</h3>
+              <small id="kpi-month-profit">Profit Margin: 0%</small>
+            </div>
+          </div>
+          <div class="kpi-card warning-kpi">
+            <div class="kpi-icon">⚠️</div>
+            <div class="kpi-data">
+              <span class="kpi-label">Low Stock Items</span>
+              <h3 id="kpi-low-stock">0</h3>
+              <small>At or below reorder level</small>
+            </div>
+          </div>
+          <div class="kpi-card danger-kpi">
+            <div class="kpi-icon">⏳</div>
+            <div class="kpi-data">
+              <span class="kpi-label">Expiry Warnings (90 Days)</span>
+              <h3 id="kpi-expiry-warn">0</h3>
+              <small>Near expiry or expired batches</small>
+            </div>
+          </div>
+        </div>
+
+        <div class="dashboard-widgets-grid">
+          <div class="card-box">
+            <div class="card-box-header">
+              <h3>⚡ Low Stock Reorder List</h3>
+              <button class="btn-sm" id="btn-goto-stock">View All Stock</button>
+            </div>
+            <div class="table-responsive">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Medicine</th>
+                    <th>Category</th>
+                    <th>In Stock</th>
+                    <th>Min Level</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody id="dash-low-stock-body"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="card-box">
+            <div class="card-box-header">
+              <h3>⏳ Near Expiry Stock Alerts (FEFO Priority)</h3>
+              <button class="btn-sm" id="btn-goto-expiry">View Expiry Manager</button>
+            </div>
+            <div class="table-responsive">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Medicine</th>
+                    <th>Batch</th>
+                    <th>Expiry Date</th>
+                    <th>Days Left</th>
+                    <th>Qty Left</th>
+                  </tr>
+                </thead>
+                <tbody id="dash-expiry-body"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 2: Medicine Master -->
+      <div class="tab-pane" id="pane-medicines">
+        <div class="pane-toolbar">
+          <div class="search-filter-group">
+            <input type="text" id="med-search-input" placeholder="Search by Brand, Generic, Strength, SKU..." class="search-field">
+            <select id="med-cat-filter" class="select-field">
+              <option value="all">All Categories</option>
+            </select>
+          </div>
+          <div class="action-btn-group">
+            <button class="btn-primary" id="btn-add-med">+ Add New Medicine</button>
+            <button class="btn-secondary" id="btn-import-csv">📥 Bulk CSV Import</button>
+            <input type="file" id="input-csv-file" accept=".csv" style="display: none;">
+          </div>
+        </div>
+
+        <div class="card-box">
+          <div class="table-responsive">
+            <table class="data-table" id="table-medicines">
+              <thead>
+                <tr>
+                  <th>SKU</th>
+                  <th>Brand Name</th>
+                  <th>Dosage (mg)</th>
+                  <th>Generic Name</th>
+                  <th>Category</th>
+                  <th>Packing</th>
+                  <th>Selling Price</th>
+                  <th>VAT %</th>
+                  <th>Schedule</th>
+                  <th>Rx Req</th>
+                  <th>Total Stock</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="med-table-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 3: Stock Management -->
+      <div class="tab-pane" id="pane-stock">
+        <div class="pane-toolbar">
+          <div class="search-filter-group">
+            <select id="stock-status-filter" class="select-field">
+              <option value="all">All Batches</option>
+              <option value="active">Active & In Stock</option>
+              <option value="expired">Expired Batches</option>
+              <option value="quarantined">Quarantined / Disabled</option>
+            </select>
+          </div>
+          <div class="action-btn-group">
+            <button class="btn-primary" id="btn-add-batch">+ Receive New Stock Batch</button>
+            <button class="btn-secondary" id="btn-stock-adjust">⚙️ Stock Adjustment</button>
+          </div>
+        </div>
+
+        <div class="card-box">
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Medicine</th>
+                  <th>Batch No</th>
+                  <th>Expiry Date</th>
+                  <th>FEFO Days</th>
+                  <th>Qty Received</th>
+                  <th>Qty Remaining</th>
+                  <th>Cost Price (৳)</th>
+                  <th>Supplier</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="stock-table-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 4: Sales History -->
+      <div class="tab-pane" id="pane-sales">
+        <div class="pane-toolbar">
+          <div class="search-filter-group">
+            <input type="date" id="sale-start-date" class="search-field">
+            <input type="date" id="sale-end-date" class="search-field">
+            <input type="text" id="sale-search-query" placeholder="Search Invoice No or Customer..." class="search-field">
+          </div>
+          <button class="btn-primary" id="btn-filter-sales">Filter Sales</button>
+        </div>
+
+        <div class="card-box">
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Invoice No</th>
+                  <th>Date & Time</th>
+                  <th>Cashier</th>
+                  <th>Customer</th>
+                  <th>Payment</th>
+                  <th>Items</th>
+                  <th>Grand Total</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="sales-table-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 5: Comprehensive Business Reports -->
+      <div class="tab-pane" id="pane-reports">
+        <div class="reports-nav-tabs">
+          <button class="rep-tab active" data-report="sales">📈 Sales Report</button>
+          <button class="rep-tab" data-report="stock">📦 Stock & FEFO Report</button>
+          <button class="rep-tab" data-report="medstatus">💊 Medicine Status</button>
+          <button class="rep-tab" data-report="stocked">📊 Stocked Valuation</button>
+          <button class="rep-tab" data-report="profit">💰 Profit Margins</button>
+          <button class="rep-tab" data-report="tax">🏛️ VAT Tax Collected</button>
+        </div>
+
+        <div class="pane-toolbar" id="report-toolbar" style="margin-top: -6px;">
+          <div class="search-filter-group">
+            <select id="rep-timeframe-select" class="select-field" style="max-width: 180px;">
+              <option value="daily">Daily Breakdown</option>
+              <option value="monthly">Monthly Breakdown</option>
+              <option value="yearly">Yearly Breakdown</option>
+            </select>
+            <input type="month" id="rep-month-picker" class="search-field" style="max-width: 180px;">
+            <select id="rep-year-select" class="select-field" style="max-width: 140px;">
+              <option value="2026">Year 2026</option>
+              <option value="2025">Year 2025</option>
+            </select>
+          </div>
+          <div class="action-btn-group">
+            <button class="btn-primary" id="btn-download-rep-pdf">📥 Download PDF Report</button>
+          </div>
+        </div>
+
+        <div class="card-box" id="report-view-container"></div>
+      </div>
+
+      <!-- TAB 6: Customers -->
+      <div class="tab-pane" id="pane-customers">
+        <div class="pane-toolbar">
+          <input type="text" id="cust-search" placeholder="Search Customer Name or Phone..." class="search-field">
+          <button class="btn-primary" id="btn-add-customer">+ Add Customer</button>
+        </div>
+        <div class="card-box">
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Customer Name</th>
+                  <th>Phone Number</th>
+                  <th>Email</th>
+                  <th>Address</th>
+                  <th>Loyalty Points</th>
+                  <th>Total Spent</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="cust-table-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 7: Suppliers -->
+      <div class="tab-pane" id="pane-suppliers">
+        <div class="pane-toolbar">
+          <button class="btn-primary" id="btn-add-supplier">+ Add Supplier</button>
+        </div>
+        <div class="card-box">
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Supplier Name</th>
+                  <th>Contact Person</th>
+                  <th>Phone</th>
+                  <th>Email</th>
+                  <th>VAT/BIN</th>
+                  <th>Address</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="supplier-table-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 8: Users -->
+      <div class="tab-pane" id="pane-users">
+        <div class="pane-toolbar">
+          <button class="btn-primary" id="btn-add-user">+ Add New User / Cashier</button>
+        </div>
+        <div class="card-box">
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>User ID</th>
+                  <th>Name</th>
+                  <th>Role</th>
+                  <th>PIN Code</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="user-table-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 9: Store Settings & Full Receipt Customizer -->
+      <div class="tab-pane" id="pane-settings">
+        <div class="settings-layout-2col">
+          <!-- Left Column: Customization Controls -->
+          <div class="settings-form-container">
+            <div class="card-box" style="margin-bottom: 20px;">
+              <h3>🎨 Receipt Logo & Branding</h3>
+              <div class="form-group">
+                <label>Upload Store Logo Image (PNG / JPG)</label>
+                <input type="file" id="input-logo-file" accept="image/*" class="form-control">
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Logo Width (px)</label>
+                  <input type="number" id="set-logo-width" class="form-control" value="120" min="40" max="250">
+                </div>
+                <div class="form-group">
+                  <label>Paper Size</label>
+                  <select id="set-paper-width" class="form-control">
+                    <option value="80mm">80mm Thermal (Standard 3-inch Roll)</option>
+                    <option value="58mm">58mm Thermal (Small 2-inch Roll)</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <div class="card-box" style="margin-bottom: 20px;">
+              <h3>🏢 Store Information</h3>
+              <form id="form-store-settings">
+                <div class="form-group">
+                  <label>Store Name *</label>
+                  <input type="text" id="set-store-name" required class="form-control">
+                </div>
+                <div class="form-group">
+                  <label>Store Subtitle / Tagline</label>
+                  <input type="text" id="set-store-tagline" class="form-control">
+                </div>
+                <div class="form-group">
+                  <label>Store Address</label>
+                  <input type="text" id="set-store-address" class="form-control">
+                </div>
+                <div class="form-row">
+                  <div class="form-group">
+                    <label>Phone Number</label>
+                    <input type="text" id="set-store-phone" class="form-control">
+                  </div>
+                  <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="set-store-email" class="form-control">
+                  </div>
+                </div>
+                <div class="form-row">
+                  <div class="form-group">
+                    <label>VAT / BIN Tax ID</label>
+                    <input type="text" id="set-store-gstin" class="form-control">
+                  </div>
+                  <div class="form-group">
+                    <label>Drug License No (DL)</label>
+                    <input type="text" id="set-store-dl" class="form-control">
+                  </div>
+                </div>
+
+                <h3 style="margin-top:20px; margin-bottom:12px;">🎛️ Receipt Display Toggles</h3>
+                <div class="toggles-grid">
+                  <label class="toggle-checkbox"><input type="checkbox" id="set-toggle-logo" checked> Show Logo</label>
+                  <label class="toggle-checkbox"><input type="checkbox" id="set-toggle-cashier" checked> Show Cashier Name</label>
+                  <label class="toggle-checkbox"><input type="checkbox" id="set-toggle-customer" checked> Show Customer Details</label>
+                  <label class="toggle-checkbox"><input type="checkbox" id="set-toggle-batch" checked> Show Batch & Expiry</label>
+                  <label class="toggle-checkbox"><input type="checkbox" id="set-toggle-tax" checked> Show Tax Breakdown</label>
+                  <label class="toggle-checkbox"><input type="checkbox" id="set-toggle-barcode" checked> Show Invoice Barcode</label>
+                </div>
+
+                <div class="form-group" style="margin-top:14px;">
+                  <label>Header Custom Notice Text</label>
+                  <input type="text" id="set-header-notice" class="form-control" placeholder="e.g. Schedule H prescription required">
+                </div>
+
+                <div class="form-group">
+                  <label>Footer Policy & Return Note</label>
+                  <textarea id="set-receipt-footer" rows="2" class="form-control"></textarea>
+                </div>
+
+                <button type="submit" class="btn-primary" style="width:100%; margin-top:10px;">Save All Store & Receipt Settings</button>
+              </form>
+            </div>
+
+            <!-- Maintenance & USB Backups -->
+            <div class="card-box">
+              <h3>💾 Local Database Backups</h3>
+              <div class="backup-actions">
+                <button class="btn-primary" id="btn-create-backup">💾 Instant DB Backup</button>
+                <button class="btn-secondary" id="btn-download-backup">⬇️ Download Backup File</button>
+              </div>
+              <div class="restore-box" style="margin-top: 16px; border-top: 1px solid #334155; padding-top: 14px;">
+                <h4>Restore DB Snapshot</h4>
+                <input type="file" id="restore-file-input" accept=".db" class="form-control" style="margin: 8px 0;">
+                <button class="btn-danger" id="btn-do-restore">⚠️ Restore Database</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right Column: Real-Time Live Receipt Preview -->
+          <div class="settings-preview-container">
+            <div class="card-box sticky-preview-card">
+              <div class="card-box-header">
+                <h3>🧾 Live Receipt Preview</h3>
+                <div class="preview-actions">
+                  <button class="btn-sm" id="btn-test-print-receipt">🖨️ Test Thermal Print</button>
+                  <button class="btn-sm" id="btn-test-download-pdf">📥 Test Download PDF</button>
+                </div>
+              </div>
+              <div class="live-preview-paper-wrapper">
+                <div id="live-receipt-preview-box"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- Shared Modal Container -->
+  <div class="modal-overlay" id="admin-modal-overlay" style="display: none;">
+    <div class="modal-card" id="admin-modal-card">
+      <div class="modal-header">
+        <h3 id="admin-modal-title">Modal Form</h3>
+        <button class="btn-close-modal" id="btn-close-admin-modal">×</button>
+      </div>
+      <div class="modal-body" id="admin-modal-body"></div>
+    </div>
+  </div>
+
+  <script src="admin.js"></script>
+</body>
+</html>
